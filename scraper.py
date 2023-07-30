@@ -1,26 +1,59 @@
+
 from bs4 import BeautifulSoup
 import requests
+product_url = 'https://www.castelli-cycling.com/FR/fr/Homme/c/Man?q=%3Arelevance&page=19'
 
-html_text = requests.get('https://www.castelli-cycling.com/FR/fr/Homme/Cyclisme/Top/Maillots-de-cyclisme-pour-hommes/c/Man-Cyc-Top-Jer').text
+# Get the page content
+html_text = requests.get(product_url).text
 soup = BeautifulSoup(html_text, 'lxml')
-products = soup.find_all('div', class_='col-sm-6 col-md-4 mb-3 product-item')
+# Find the product information on the page
+product = soup.find('div', class_='col-sm-6 col-md-4 mb-3 product-item')
 
-for product in products:
-    title = product.select_one('p.m-0.h5.text-center.slideTitle').text
-    price = product.select_one('span.f500.price-span').text
-    description = product.select_one('p.m-0.text-center').text.strip()
-    img_link = product.find('img')['src']
+# Extract product details
+title = product.select_one('p.m-0.h5.text-center.slideTitle').text.strip()
+price = product.select_one('span.f500.price-span').text.strip()
+compared_price = product.select_one('span.sconto')
+if compared_price:
+    # Extract the compared price from the element
+    compared_price = compared_price.text.strip()
+else:
+    # Set a default value (e.g., 'N/A' or an empty string) if the element does not exist
+    compared_price = 'None'
+description = product.select_one('p.m-0.text-center').text.strip()
+img_link = product.find('img')['src']
 
-    product_link = product.find('a')['href']
-    product_page = requests.get(product_link).text
-    product_soup = BeautifulSoup(product_page, 'lxml')
-    weight = product_soup.select_one('span.char-value').text
-    
-    print(f'''
-    Title: {title}
-    Price: {price}
-    Weight: {weight}
-    Description: {description}
-    Image Link: {img_link}
-    ''')
+product_link = product.find('a')['href']
+product_page = requests.get(product_link).text
+product_soup = BeautifulSoup(product_page, 'lxml')
 
+type_soup = product_soup.select('ol.breadcrumb li')
+
+type_list = []
+found_type = False
+
+for value in type_soup:
+    if found_type:
+        break
+
+    if value.a:
+        category = value.a.text.strip()
+        type_list.append(category)
+    else:
+        found_type = True
+type = type_list[-1]
+
+
+size_inputs = product_soup.find_all('input', class_='form-check-input')
+size_values = [size_input['value'] for size_input in size_inputs if 'value' in size_input.attrs]
+size = ', '.join(size_values)
+
+weight = product_soup.select_one('span.char-value').text.strip()
+
+print(f'Title: {title}')
+print(f'Price: {price}')
+print(f'Weight: {weight}')
+print(f'Type: {type}')
+print(f'Size: {size}')
+print(f'comp Price: {compared_price}')
+print(f'Description: {description}')
+print(f'Image Link: {img_link}')
